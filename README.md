@@ -1,2 +1,2 @@
 # CS-561
-SQL assignments
+SQL assignments (mostly) and maybe study material I could potentially post later....
