@@ -1,40 +1,51 @@
-Select Product, customer, CT_AVG, NY_AVG, NJ_AVG, PA_AVG, average, total, count
-from
-(SELECT CT_report.prod as Product, CT_report.cust as customer, CT_average_sales_quantities as CT_AVG,
-NY_average_sales_quantities as NY_AVG,
-NJ_average_sales_quantities as NJ_AVG,
-PA_average_sales_quantities as PA_AVG
-from
-(select prod, cust, ROUND(avg(quant)) as CT_average_sales_quantities
+with NY_max as(
+select prod, cust, max(quant) as NY_max_quantities
 from sales 
-where state = 'CT' group by prod, cust order by cust, prod) as CT_report
+where state = 'NY' 
+group by prod, cust
+order by cust, prod
+),
 
-inner join
+NY_FINAL as(
+select sls.prod, sls.cust, sls.month, sls.day, sls.year, nym.NY_max_quantities as NYMAX
+from sales as sls, NY_max as nym
+where nym.NY_max_quantities = sls.quant and nym.cust = sls.cust and nym.prod = sls.prod and sls.state = 'NY'
+group by sls.prod, sls.cust, sls.month, sls.day, sls.year, nym.NY_max_quantities
+order by cust, prod
+),
 
-(select prod, cust, ROUND(avg(quant)) as NY_average_sales_quantities
+CT_max as(
+select prod, cust, max(quant) as CT_max_quantities
 from sales 
-where state = 'NY' group by prod, cust order by cust, prod) as NY_report
+where state = 'CT' 
+group by prod, cust 
+order by cust, prod
+),
 
-on CT_report.cust = NY_report.cust and CT_report.prod = NY_report.prod
+CT_FINAL as(
+select sls.prod, sls.cust, sls.month, sls.day, sls.year, ctm.CT_max_quantities as CTMAX
+from sales as sls, CT_max as ctm
+where ctm.CT_max_quantities = sls.quant and ctm.cust = sls.cust and ctm.prod = sls.prod and sls.state = 'CT'
+group by sls.prod, sls.cust, sls.month, sls.day, sls.year, ctm.CT_max_quantities
+order by cust, prod
+),
 
-inner join
-
-(select prod, cust, ROUND(avg(quant)) as NJ_average_sales_quantities
+NJ_max as(
+select prod, cust, max(quant) as NJ_max_quantities
 from sales 
-where state = 'NJ' group by prod, cust order by cust, prod) as NJ_report
+where state = 'NJ' 
+group by prod, cust 
+order by cust, prod
+),
 
-on CT_report.cust = NJ_report.cust and CT_report.prod = NJ_report.prod
+NJ_FINAL as(
+select sls.prod, sls.cust, sls.month, sls.day, sls.year, njm.NJ_max_quantities AS NJMAX
+from sales as sls, NJ_max as njm
+where njm.NJ_max_quantities = sls.quant and njm.cust = sls.cust and njm.prod = sls.prod and sls.state = 'NJ'
+group by sls.prod, sls.cust, sls.month, sls.day, sls.year, njm.NJ_max_quantities
+order by cust, prod
+)
 
-inner join
-
-(select prod, cust, ROUND(avg(quant)) as PA_average_sales_quantities
-from sales 
-where state = 'PA' group by prod, cust order by cust, prod) as PA_report
-
-on CT_report.cust = PA_report.cust and CT_report.prod = PA_report.prod) as State_avg_report
-
-inner join 
-
-(Select prod, cust, ROUND(avg(quant)) as average, sum(quant) as total, count(quant) as count from sales group by prod, cust) as avg_report
-
-on State_avg_report.product = avg_report.prod and State_avg_report.customer = avg_report.cust
+SELECT njm.cust, njm.prod, njm.NJMAX as NJ_MAX, njm.month, njm.day, njm.year, nym.NYMAX as NY_MAX, nym.month, nym.day, nym.year, ctm.CTMAX as CT_MAX, ctm.month, ctm.day, ctm.year
+from NJ_FINAL as njm, NY_FINAL as nym, CT_FINAL as ctm
+where njm.prod = nym.prod and nym.prod = ctm.prod and njm.cust = nym.cust and nym.cust = ctm.cust
